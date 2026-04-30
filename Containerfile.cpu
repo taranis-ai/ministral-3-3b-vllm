@@ -1,0 +1,96 @@
+FROM astral/uv:python3.12-trixie-slim AS builder
+
+ARG MODEL_ID="unsloth/Ministral-3-3B-Base-2512-bnb-4bit"
+ARG MODEL_DIR="/models/Ministral-3-3B-Base-2512-bnb-4bit"
+ARG VLLM_REF="v0.19.1"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    build-essential \
+    ca-certificates \
+    cmake \
+    ccache \
+    git \
+    git-lfs \
+    libnuma-dev \
+    libnuma1 \
+    libtcmalloc-minimal4 \
+    ninja-build \
+    numactl \
+    pkg-config \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system app && \
+    useradd --system --create-home --home-dir /app --gid app app && \
+    mkdir -p /models /src && \
+    chown -R app:app /app /models /src
+
+ENV UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1
+ENV CC=/usr/bin/gcc
+ENV CXX=/usr/bin/g++
+
+RUN uv venv /app/.venv
+ENV PATH="/app/.venv/bin:${PATH}"
+
+RUN git clone --branch "${VLLM_REF}" --depth 1 https://github.com/vllm-project/vllm.git /src/vllm
+
+RUN uv pip install --python /app/.venv/bin/python \
+    --index-strategy unsafe-best-match \
+    -r /src/vllm/requirements/cpu-build.txt \
+    --torch-backend cpu
+
+RUN uv pip install --python /app/.venv/bin/python \
+    --index-strategy unsafe-best-match \
+    -r /src/vllm/requirements/cpu.txt \
+    --torch-backend cpu
+
+ENV VLLM_TARGET_DEVICE=cpu
+ENV CMAKE_DISABLE_FIND_PACKAGE_CUDA=ON
+
+RUN cd /src/vllm && \
+    uv pip install --python /app/.venv/bin/python . --no-build-isolation
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_DIR="${MODEL_DIR}"
+
+# Download the model in the builder image so runtime startup stays offline.
+RUN python -c "from huggingface_hub import snapshot_download; import os; snapshot_download(repo_id=os.environ['MODEL_ID'], local_dir=os.environ['MODEL_DIR'], local_dir_use_symlinks=False)"
+
+FROM astral/uv:python3.12-trixie-slim AS runtime
+
+ARG MODEL_DIR="/models/Ministral-3-3B-Base-2512-bnb-4bit"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    libnuma1 \
+    libtcmalloc-minimal4t64 \
+    numactl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --system app && \
+    useradd --system --create-home --home-dir /app --gid app app && \
+    mkdir -p /models && \
+    chown -R app:app /app /models
+
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /models /models
+
+RUN ln -sf /usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4 /usr/local/lib/libtcmalloc_minimal.so.4 && \
+    ln -sf "$(find /app/.venv -name libiomp5.so -print -quit)" /usr/local/lib/libiomp5.so && \
+    chown -R app:app /app /models
+
+USER app
+
+ENV PATH="/app/.venv/bin:${PATH}"
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+ENV MODEL_DIR="${MODEL_DIR}"
+ENV LD_PRELOAD="/usr/local/lib/libtcmalloc_minimal.so.4:/usr/local/lib/libiomp5.so"
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --host 0.0.0.0 --port 8000 --tokenizer_mode mistral --config_format mistral --load_format mistral --dtype bfloat16"]
