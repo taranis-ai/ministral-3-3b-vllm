@@ -70,6 +70,12 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
+      - name: Retag image as ${{ matrix.variant }}
+        run: |
+          docker buildx imagetools create \
+            --tag "${GHCR_IMAGE}:${{ matrix.variant }}" \
+            "${GHCR_IMAGE}@${{ steps.build.outputs.digest }}"
+
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
