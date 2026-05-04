@@ -1,7 +1,7 @@
 FROM vllm/vllm-openai:latest AS builder
 
-ARG MODEL_ID="unsloth/Ministral-3-3B-Base-2512-bnb-4bit"
-ARG MODEL_DIR="/models/Ministral-3-3B-Base-2512-bnb-4bit"
+ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
+ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN chown -R app:app /models
 
 FROM vllm/vllm-openai:latest AS runtime
 
-ARG MODEL_DIR="/models/Ministral-3-3B-Base-2512-bnb-4bit"
+ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 
 WORKDIR /app
 
