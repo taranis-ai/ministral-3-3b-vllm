@@ -1,58 +1,65 @@
-# ministral-3-3b-vllm
+# taranis-llm-images
 
-Container images for serving Ministral 3 3B with `vllm`.
+Container images for serving baked-in models with `vllm`.
 
 - Model baked into the image at build time
 - Offline runtime startup
-- Separate CPU and GPU variants
+- Generic CPU and GPU images
+- Model selection via build args mirrored into env vars
 
 ## Files
 
-- `Containerfile.gpu`: GPU-oriented image based on `vllm/vllm-openai:latest`
-- `Containerfile.cpu`: CPU-oriented multi-stage image based on `astral/uv:python3.12-trixie-slim`, building vLLM from source
+- `Containerfile.gpu`: generic GPU image, with configurable base image, baked model, and serve args
+- `Containerfile.cpu`: generic CPU image built from source, with configurable baked model and serve args
+
+## Defaults
+
+- CPU and GPU default model: `cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit`
+- CPU and GPU default model dir: `/models/Ministral-3-3B-Instruct-2512-AWQ-4bit`
+- Default serve args: `--tokenizer_mode mistral --config_format mistral --load_format mistral`
+- GPU default base image: `vllm/vllm-openai:latest`
+
+The images still bake the selected model at build time for offline startup. That means changing `MODEL_ID` at runtime does not fetch a new model; it only affects the env inside an image that already contains that model.
 
 ## Build
 
 ```bash
-docker build -f Containerfile.gpu -t ministral-3-3b-vllm:gpu .
-docker build -f Containerfile.cpu -t ministral-3-3b-vllm:cpu .
+docker build -f Containerfile.gpu -t taranis-llm-images:gpu .
+docker build -f Containerfile.cpu -t taranis-llm-images:cpu .
 ```
 
-The GPU image uses a single-stage `vllm/vllm-openai` base to avoid duplicating the baked model during CI builds.
-Its default model is `cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit`.
-
-The CPU image builds vLLM from source in the builder stage and copies only the built virtualenv and baked model into the runtime stage. Upstream vLLM's x86 CPU guidance currently recommends source builds instead of relying on a prebuilt x86 CPU wheel.
-Its default model is `cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit`, because current vLLM docs list AWQ as supported on x86 CPU, while `bitsandbytes` is not listed for x86 CPU.
-
-Override the baked-in model if needed:
+Build Gemma 4 E2B on GPU:
 
 ```bash
 docker build \
   -f Containerfile.gpu \
-  --build-arg MODEL_ID=cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit \
-  --build-arg MODEL_DIR=/models/Ministral-3-3B-Instruct-2512-AWQ-4bit \
-  -t ministral-3-3b-vllm:gpu .
+  --build-arg VLLM_BASE_IMAGE=vllm/vllm-openai:gemma4 \
+  --build-arg MODEL_ID=google/gemma-4-E2B-it \
+  --build-arg MODEL_DIR=/models/gemma-4-E2B-it \
+  --build-arg SERVE_ARGS="--limit-mm-per-prompt image=0,audio=0" \
+  -t taranis-llm-images:gpu-gemma-4-e2b .
 ```
 
-Override the CPU image model if needed:
+Build Gemma 4 E2B on CPU:
 
 ```bash
 docker build \
   -f Containerfile.cpu \
-  --build-arg MODEL_ID=cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit \
-  --build-arg MODEL_DIR=/models/Ministral-3-3B-Instruct-2512-AWQ-4bit \
-  -t ministral-3-3b-vllm:cpu .
+  --build-arg MODEL_ID=majentik/gemma-4-E2B-it-TurboQuant-AWQ-4bit \
+  --build-arg MODEL_DIR=/models/gemma-4-E2B-it-TurboQuant-AWQ-4bit \
+  --build-arg SERVE_ARGS="--limit-mm-per-prompt image=0,audio=0" \
+  -t taranis-llm-images:cpu-gemma-4-e2b .
 ```
 
 ## Run
 
-GPU:
+Default GPU image:
 
 ```bash
-docker run --rm -p 8000:8000 --gpus all ministral-3-3b-vllm:gpu
+docker run --rm -p 8000:8000 --gpus all taranis-llm-images:gpu
 ```
 
-CPU:
+Default CPU image:
 
 ```bash
 docker run --rm \
@@ -60,16 +67,34 @@ docker run --rm \
   --cap-add SYS_NICE \
   --shm-size=4g \
   -p 8000:8000 \
-  ministral-3-3b-vllm:cpu
+  taranis-llm-images:cpu
 ```
 
 ## Test
+
+Default Mistral image:
 
 ```bash
 curl -sS http://localhost:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "/models/Ministral-3-3B-Instruct-2512-AWQ-4bit",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Write a one-sentence summary of what you are."
+      }
+    ]
+  }'
+```
+
+Gemma image:
+
+```bash
+curl -sS http://localhost:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "/models/gemma-4-E2B-it",
     "messages": [
       {
         "role": "user",

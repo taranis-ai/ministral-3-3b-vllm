@@ -14,15 +14,40 @@ permissions:
 
 jobs:
   build_container:
-    name: Build and Push Container (${{ matrix.variant }}, ${{ matrix.os }})
+    name: Build and Push Container (${{ matrix.model }}:${{ matrix.variant }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        variant: [cpu, gpu]
-        os: [blacksmith-2vcpu-ubuntu-2404]
-    env:
-      GHCR_IMAGE: ghcr.io/taranis-ai/taranis-${{ github.event.repository.name }}
+        include:
+          - model: ministral-3-3b
+            variant: cpu
+            os: blacksmith-2vcpu-ubuntu-2404
+            model_id: cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit
+            model_dir: /models/Ministral-3-3B-Instruct-2512-AWQ-4bit
+            serve_args: --tokenizer_mode mistral --config_format mistral --load_format mistral
+            vllm_base_image: vllm/vllm-openai:latest
+          - model: ministral-3-3b
+            variant: gpu
+            os: blacksmith-2vcpu-ubuntu-2404
+            model_id: cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit
+            model_dir: /models/Ministral-3-3B-Instruct-2512-AWQ-4bit
+            serve_args: --tokenizer_mode mistral --config_format mistral --load_format mistral
+            vllm_base_image: vllm/vllm-openai:latest
+          - model: gemma-4-e2b
+            variant: cpu
+            os: blacksmith-2vcpu-ubuntu-2404
+            model_id: majentik/gemma-4-E2B-it-TurboQuant-AWQ-4bit
+            model_dir: /models/gemma-4-E2B-it-TurboQuant-AWQ-4bit
+            serve_args: --limit-mm-per-prompt image=0,audio=0
+            vllm_base_image: vllm/vllm-openai:gemma4
+          - model: gemma-4-e2b
+            variant: gpu
+            os: blacksmith-2vcpu-ubuntu-2404
+            model_id: google/gemma-4-E2B-it
+            model_dir: /models/gemma-4-E2B-it
+            serve_args: --limit-mm-per-prompt image=0,audio=0
+            vllm_base_image: vllm/vllm-openai:gemma4
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,26 +68,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set metadata for variant ${{ matrix.variant }}
+      - name: Set metadata for variant ${{ matrix.model }}:${{ matrix.variant }}
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.GHCR_IMAGE }}
+          images: ghcr.io/taranis-ai/${{ matrix.model }}
           labels: |
             org.opencontainers.image.architecture=${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}
 
-      - name: Build and push container for variant ${{ matrix.variant }}
+      - name: Build and push container for variant ${{ matrix.model }}:${{ matrix.variant }}
         uses: docker/build-push-action@v6
         id: build
         with:
           file: Containerfile.${{ matrix.variant }}
           platforms: linux/${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}
+          build-args: |
+            MODEL_ID=${{ matrix.model_id }}
+            MODEL_DIR=${{ matrix.model_dir }}
+            SERVE_ARGS=${{ matrix.serve_args }}
+            VLLM_BASE_IMAGE=${{ matrix.vllm_base_image }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: true
-          cache-from: type=registry,ref=${{ env.GHCR_IMAGE }}-cache-${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}:${{ matrix.variant }}
-          cache-to: type=registry,ref=${{ env.GHCR_IMAGE }}-cache-${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}:${{ matrix.variant }},mode=max
+          cache-from: type=registry,ref=ghcr.io/taranis-ai/${{ matrix.model }}-cache-${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}:${{ matrix.variant }}
+          cache-to: type=registry,ref=ghcr.io/taranis-ai/${{ matrix.model }}-cache-${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}:${{ matrix.variant }},mode=max
           outputs: |
-            type=image,"name=${{ env.GHCR_IMAGE }}",push-by-digest=true,name-canonical=true,push=true,compression=zstd
+            type=image,"name=ghcr.io/taranis-ai/${{ matrix.model }}",push-by-digest=true,name-canonical=true,push=true,compression=zstd
 
       - name: Export digest
         run: |
@@ -70,16 +100,16 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
-      - name: Retag image as ${{ matrix.variant }}
+      - name: Retag image as ${{ matrix.model }}:${{ matrix.variant }}
         run: |
           docker buildx imagetools create \
-            --tag "${GHCR_IMAGE}:${{ matrix.variant }}" \
-            "${GHCR_IMAGE}@${{ steps.build.outputs.digest }}"
+            --tag "ghcr.io/taranis-ai/${{ matrix.model }}:${{ matrix.variant }}" \
+            "ghcr.io/taranis-ai/${{ matrix.model }}@${{ steps.build.outputs.digest }}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.os }}-${{ matrix.variant }}
+          name: digests-${{ matrix.os }}-${{ matrix.model }}-${{ matrix.variant }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -90,9 +120,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [cpu, gpu]
+        include:
+          - model: ministral-3-3b
+            variant: cpu
+          - model: ministral-3-3b
+            variant: gpu
+          - model: gemma-4-e2b
+            variant: cpu
+          - model: gemma-4-e2b
+            variant: gpu
     uses: taranis-ai/github-actions/.github/workflows/merge-multiarch-bot-container.yml@master
     with:
-      ghcr_image: ghcr.io/taranis-ai/taranis-${{ github.event.repository.name }}
+      ghcr_image: ghcr.io/taranis-ai/${{ matrix.model }}
       model: ${{ matrix.variant }}
-      latest: ${{ matrix.variant == 'gpu' }}
+      latest: false
