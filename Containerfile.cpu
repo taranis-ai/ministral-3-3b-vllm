@@ -1,8 +1,9 @@
 FROM astral/uv:python3.12-trixie-slim AS builder
 
-ARG MODEL_ID="majentik/gemma-4-E2B-it-TurboQuant-AWQ-4bit"
-ARG MODEL_DIR="/models/gemma-4-E2B-it-TurboQuant-AWQ-4bit"
+ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
+ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG VLLM_REF="v0.19.1"
+ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral"
 
 WORKDIR /app
 
@@ -61,7 +62,9 @@ RUN python -c "from huggingface_hub import snapshot_download; import os; snapsho
 
 FROM astral/uv:python3.12-trixie-slim AS runtime
 
-ARG MODEL_DIR="/models/gemma-4-E2B-it-TurboQuant-AWQ-4bit"
+ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
+ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
+ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral"
 
 WORKDIR /app
 
@@ -88,9 +91,11 @@ USER app
 ENV PATH="/app/.venv/bin:${PATH}"
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
+ENV MODEL_ID="${MODEL_ID}"
 ENV MODEL_DIR="${MODEL_DIR}"
+ENV SERVE_ARGS="${SERVE_ARGS}"
 ENV LD_PRELOAD="/usr/local/lib/libtcmalloc_minimal.so.4:/usr/local/lib/libiomp5.so"
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --host 0.0.0.0 --port 8000 --limit-mm-per-prompt image=0,audio=0"]
+CMD ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --host 0.0.0.0 --port 8000 $SERVE_ARGS"]
