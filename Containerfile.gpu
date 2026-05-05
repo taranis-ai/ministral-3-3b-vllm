@@ -1,14 +1,9 @@
-FROM vllm/vllm-openai:latest AS builder
+FROM vllm/vllm-openai:latest
 
 ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 
 WORKDIR /app
-
-RUN apt-get update && apt-get install --no-install-recommends -y \
-    ca-certificates \
-    git \
-    && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system app && \
     useradd --system --create-home --home-dir /app --gid app app && \
@@ -18,23 +13,8 @@ RUN groupadd --system app && \
 ENV MODEL_ID="${MODEL_ID}"
 ENV MODEL_DIR="${MODEL_DIR}"
 
-# Download the model in the builder image so runtime startup stays offline.
+# Download the model into the final image so runtime startup stays offline.
 RUN python3 -c "from huggingface_hub import snapshot_download; import os; snapshot_download(repo_id=os.environ['MODEL_ID'], local_dir=os.environ['MODEL_DIR'], local_dir_use_symlinks=False)"
-RUN chown -R app:app /models
-
-FROM vllm/vllm-openai:latest AS runtime
-
-ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
-
-WORKDIR /app
-
-RUN groupadd --system app && \
-    useradd --system --create-home --home-dir /app --gid app app && \
-    mkdir -p /models && \
-    chown -R app:app /app /models
-
-COPY --from=builder /models /models
-
 RUN chown -R app:app /models
 
 USER app

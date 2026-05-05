@@ -4,12 +4,11 @@ Container images for serving Ministral 3 3B with `vllm`.
 
 - Model baked into the image at build time
 - Offline runtime startup
-- Multi-stage builds
 - Separate CPU and GPU variants
 
 ## Files
 
-- `Containerfile.gpu`: GPU-oriented multi-stage image based on `vllm/vllm-openai:latest`
+- `Containerfile.gpu`: GPU-oriented image based on `vllm/vllm-openai:latest`
 - `Containerfile.cpu`: CPU-oriented multi-stage image based on `astral/uv:python3.12-trixie-slim`, building vLLM from source
 
 ## Build
@@ -19,7 +18,7 @@ docker build -f Containerfile.gpu -t ministral-3-3b-vllm:gpu .
 docker build -f Containerfile.cpu -t ministral-3-3b-vllm:cpu .
 ```
 
-The GPU image uses `vllm/vllm-openai` for both builder and runtime stages and only carries the baked model into the final image.
+The GPU image uses a single-stage `vllm/vllm-openai` base to avoid duplicating the baked model during CI builds.
 Its default model is `cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit`.
 
 The CPU image builds vLLM from source in the builder stage and copies only the built virtualenv and baked model into the runtime stage. Upstream vLLM's x86 CPU guidance currently recommends source builds instead of relying on a prebuilt x86 CPU wheel.
