@@ -1,4 +1,4 @@
-name: Build and merge containers
+name: Build containers
 
 on:
   workflow_dispatch:
@@ -113,24 +113,3 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
-
-  merge_container:
-    name: Merge Container Manifests
-    needs: build_container
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - model: ministral-3-3b
-            variant: cpu
-          - model: ministral-3-3b
-            variant: gpu
-          - model: gemma-4-e2b
-            variant: cpu
-          - model: gemma-4-e2b
-            variant: gpu
-    uses: taranis-ai/github-actions/.github/workflows/merge-multiarch-bot-container.yml@master
-    with:
-      ghcr_image: ghcr.io/taranis-ai/${{ matrix.model }}
-      model: ${{ matrix.variant }}
-      latest: false
