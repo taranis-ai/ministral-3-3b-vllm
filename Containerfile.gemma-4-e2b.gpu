@@ -1,0 +1,28 @@
+FROM vllm/vllm-openai:gemma4
+
+ARG MODEL_ID="google/gemma-4-E2B-it"
+ARG MODEL_DIR="/models/gemma-4-E2B-it"
+
+WORKDIR /app
+
+RUN groupadd --system app && \
+    useradd --system --create-home --home-dir /app --gid app app && \
+    mkdir -p /models && \
+    chown -R app:app /app /models
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_DIR="${MODEL_DIR}"
+
+# Download the model into the final image so runtime startup stays offline.
+RUN python3 -c "from huggingface_hub import snapshot_download; import os; snapshot_download(repo_id=os.environ['MODEL_ID'], local_dir=os.environ['MODEL_DIR'], local_dir_use_symlinks=False)"
+RUN chown -R app:app /models
+
+USER app
+
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+ENV MODEL_DIR="${MODEL_DIR}"
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --host 0.0.0.0 --port 8000 --limit-mm-per-prompt image=0,audio=0"]
