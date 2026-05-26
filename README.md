@@ -36,7 +36,7 @@ docker build \
   --build-arg VLLM_BASE_IMAGE=vllm/vllm-openai:gemma4 \
   --build-arg MODEL_ID=google/gemma-4-E2B-it \
   --build-arg MODEL_DIR=/models/gemma-4-E2B-it \
-  --build-arg SERVE_ARGS="--limit-mm-per-prompt image=0,audio=0" \
+  --build-arg SERVE_ARGS="" \
   -t taranis-llm-images:gpu-gemma-4-e2b .
 ```
 
@@ -45,9 +45,9 @@ Build Gemma 4 E2B on CPU:
 ```bash
 docker build \
   -f Containerfile.cpu \
-  --build-arg MODEL_ID=majentik/gemma-4-E2B-it-TurboQuant-AWQ-4bit \
-  --build-arg MODEL_DIR=/models/gemma-4-E2B-it-TurboQuant-AWQ-4bit \
-  --build-arg SERVE_ARGS="--limit-mm-per-prompt image=0,audio=0" \
+  --build-arg MODEL_ID=google/gemma-4-E2B-it \
+  --build-arg MODEL_DIR=/models/gemma-4-E2B-it \
+  --build-arg SERVE_ARGS="" \
   -t taranis-llm-images:cpu-gemma-4-e2b .
 ```
 
