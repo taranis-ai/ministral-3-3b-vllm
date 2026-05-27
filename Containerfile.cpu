@@ -100,4 +100,5 @@ ENV LD_PRELOAD="/usr/local/lib/libtcmalloc_minimal.so.4:/usr/local/lib/libiomp5.
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --host 0.0.0.0 --port 8000 $SERVE_ARGS"]
+ENTRYPOINT ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --host 0.0.0.0 --port 8000 ${SERVE_ARGS:+$SERVE_ARGS }\"$@\"", "--"]
+CMD []

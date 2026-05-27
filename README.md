@@ -2,6 +2,8 @@
 
 Container images for serving baked-in models with `vllm`.
 
+Runtime arguments passed after the image name are forwarded to `vllm serve`.
+
 - Model baked into the image at build time
 - Offline runtime startup
 - Generic CPU and GPU images
@@ -49,7 +51,7 @@ docker build \
   -f Containerfile.cpu \
   --build-arg MODEL_ID=google/gemma-4-E2B-it \
   --build-arg MODEL_DIR=/models/gemma-4-E2B-it \
-  --build-arg SERVE_ARGS="" \
+  --build-arg SERVE_ARGS="--gpu-memory-utilization 0.7" \
   -t taranis-llm-images:cpu-gemma-4-e2b .
 ```
 
@@ -70,6 +72,18 @@ docker run --rm \
   --shm-size=4g \
   -p 8000:8000 \
   taranis-llm-images:cpu
+```
+
+Pass extra `vllm serve` arguments at runtime:
+
+```bash
+docker run --rm \
+  --security-opt seccomp=unconfined \
+  --cap-add SYS_NICE \
+  --shm-size=4g \
+  -p 8000:8000 \
+  taranis-llm-images:cpu \
+  --max-model-len 4096
 ```
 
 ## Test
