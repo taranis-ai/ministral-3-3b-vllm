@@ -69,6 +69,7 @@ ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format m
 WORKDIR /app
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
+    g++ \
     libnuma1 \
     libtcmalloc-minimal4t64 \
     numactl \
@@ -94,6 +95,7 @@ ENV TRANSFORMERS_OFFLINE=1
 ENV MODEL_ID="${MODEL_ID}"
 ENV MODEL_DIR="${MODEL_DIR}"
 ENV SERVE_ARGS="${SERVE_ARGS}"
+ENV CXX=/usr/bin/g++
 ENV LD_PRELOAD="/usr/local/lib/libtcmalloc_minimal.so.4:/usr/local/lib/libiomp5.so"
 
 EXPOSE 8000
