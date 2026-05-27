@@ -2,8 +2,8 @@ FROM astral/uv:python3.12-trixie-slim AS builder
 
 ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
-ARG VLLM_REF="v0.19.1"
-ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral"
+ARG VLLM_REF="v0.21.0"
+ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral --enforce-eager"
 
 WORKDIR /app
 
@@ -64,7 +64,7 @@ FROM astral/uv:python3.12-trixie-slim AS runtime
 
 ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
-ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral"
+ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral --enforce-eager"
 
 WORKDIR /app
 
