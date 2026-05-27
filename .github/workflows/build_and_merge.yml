@@ -39,7 +39,7 @@ jobs:
             os: blacksmith-2vcpu-ubuntu-2404
             model_id: google/gemma-4-E2B-it
             model_dir: /models/gemma-4-E2B-it
-            serve_args: --enforce-eager
+            serve_args: ""
             vllm_base_image: vllm/vllm-openai:gemma4
           - model: gemma-4-e2b
             variant: gpu

@@ -16,7 +16,7 @@ Container images for serving baked-in models with `vllm`.
 
 - CPU and GPU default model: `cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit`
 - CPU and GPU default model dir: `/models/Ministral-3-3B-Instruct-2512-AWQ-4bit`
-- Default CPU serve args: `--tokenizer_mode mistral --config_format mistral --load_format mistral --enforce-eager`
+- Default CPU serve args: `--tokenizer_mode mistral --config_format mistral --load_format mistral`
 - Default GPU serve args: `--tokenizer_mode mistral --config_format mistral --load_format mistral`
 - CPU vLLM ref: `v0.21.0`
 - GPU default base image: `vllm/vllm-openai:latest`
@@ -49,7 +49,7 @@ docker build \
   -f Containerfile.cpu \
   --build-arg MODEL_ID=google/gemma-4-E2B-it \
   --build-arg MODEL_DIR=/models/gemma-4-E2B-it \
-  --build-arg SERVE_ARGS="--enforce-eager" \
+  --build-arg SERVE_ARGS="" \
   -t taranis-llm-images:cpu-gemma-4-e2b .
 ```
 

@@ -3,7 +3,7 @@ FROM astral/uv:python3.12-trixie-slim AS builder
 ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG VLLM_REF="v0.21.0"
-ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral --enforce-eager"
+ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral"
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ RUN git clone --branch "${VLLM_REF}" --depth 1 https://github.com/vllm-project/v
 
 RUN uv pip install --python /app/.venv/bin/python \
     --index-strategy unsafe-best-match \
-    -r /src/vllm/requirements/cpu-build.txt \
+    -r /src/vllm/requirements/build/cpu.txt \
     --torch-backend cpu
 
 RUN uv pip install --python /app/.venv/bin/python \
@@ -64,7 +64,7 @@ FROM astral/uv:python3.12-trixie-slim AS runtime
 
 ARG MODEL_ID="cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit"
 ARG MODEL_DIR="/models/Ministral-3-3B-Instruct-2512-AWQ-4bit"
-ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral --enforce-eager"
+ARG SERVE_ARGS="--tokenizer_mode mistral --config_format mistral --load_format mistral"
 
 WORKDIR /app
 
