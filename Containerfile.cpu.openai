@@ -1,7 +1,7 @@
 FROM vllm/vllm-openai-cpu:latest-x86_64
 
-ARG MODEL_ID="Qwen/Qwen2.5-0.5B-Instruct"
-ARG MODEL_DIR="/models/Qwen2.5-0.5B-Instruct"
+ARG MODEL_ID="Qwen/Qwen3.5-0.8B"
+ARG MODEL_DIR="/models/Qwen3.5-0.8B-Instruct"
 
 WORKDIR /app
 
