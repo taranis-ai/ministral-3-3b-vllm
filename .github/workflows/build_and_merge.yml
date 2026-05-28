@@ -20,34 +20,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - model: ministral-3-3b
-            variant: cpu
+          - variant: cpu
             os: blacksmith-2vcpu-ubuntu-2404
-            model_id: cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit
-            model_dir: /models/Ministral-3-3B-Instruct-2512-AWQ-4bit
-            serve_args: --tokenizer_mode mistral --config_format mistral --load_format mistral
-            vllm_base_image: vllm/vllm-openai:latest
-          - model: ministral-3-3b
-            variant: gpu
+            model: qwen3.5-2b
+            model_id: Qwen/Qwen3.5-2B
+            model_dir: /models/Qwen3.5-2B
+          - variant: cpu
             os: blacksmith-2vcpu-ubuntu-2404
-            model_id: cyankiwi/Ministral-3-3B-Instruct-2512-AWQ-4bit
-            model_dir: /models/Ministral-3-3B-Instruct-2512-AWQ-4bit
-            serve_args: --tokenizer_mode mistral --config_format mistral --load_format mistral
-            vllm_base_image: vllm/vllm-openai:latest
-          - model: gemma-4-e2b
-            variant: cpu
-            os: blacksmith-2vcpu-ubuntu-2404
-            model_id: google/gemma-4-E2B-it
-            model_dir: /models/gemma-4-E2B-it
-            serve_args: --gpu-memory-utilization 0.7
-            vllm_base_image: vllm/vllm-openai:gemma4
-          - model: gemma-4-e2b
-            variant: gpu
-            os: blacksmith-2vcpu-ubuntu-2404
-            model_id: google/gemma-4-E2B-it
-            model_dir: /models/gemma-4-E2B-it
-            serve_args: ""
-            vllm_base_image: vllm/vllm-openai:gemma4
+            model: qwen3.5-0.8b
+            model_id: Qwen/Qwen3.5-0.8B
+            model_dir: /models/Qwen3.5-0.8B
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -85,8 +67,6 @@ jobs:
           build-args: |
             MODEL_ID=${{ matrix.model_id }}
             MODEL_DIR=${{ matrix.model_dir }}
-            SERVE_ARGS=${{ matrix.serve_args }}
-            VLLM_BASE_IMAGE=${{ matrix.vllm_base_image }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: true
           cache-from: type=registry,ref=ghcr.io/taranis-ai/${{ matrix.model }}-cache-${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}:${{ matrix.variant }}
