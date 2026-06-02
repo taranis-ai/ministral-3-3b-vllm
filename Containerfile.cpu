@@ -1,27 +1,64 @@
-FROM vllm/vllm-openai-cpu:latest-x86_64
+FROM python:3.12-slim AS model-downloader
 
-ARG MODEL_ID="Qwen/Qwen3.5-2B"
-ARG MODEL_DIR="/models/Qwen3.5-2B"
+ARG MODEL_ID="unsloth/Qwen3.5-2B-GGUF"
+ARG MODEL_FILE="Qwen3.5-2B-Q4_K_M.gguf"
+ARG MODEL_DIR="/models/unsloth-Qwen3.5-2B-GGUF"
 
 WORKDIR /app
 
-RUN groupadd --system app && \
-    useradd --system --create-home --home-dir /app --gid app app && \
-    mkdir -p /models && \
-    chown -R app:app /app /models
+RUN mkdir -p /models
 
 ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_FILE="${MODEL_FILE}"
 ENV MODEL_DIR="${MODEL_DIR}"
 
-RUN python3 -c "from huggingface_hub import snapshot_download; import os; snapshot_download(repo_id=os.environ['MODEL_ID'], local_dir=os.environ['MODEL_DIR'], local_dir_use_symlinks=False)"
-RUN chown -R app:app /models
+RUN pip install --no-cache-dir huggingface_hub
+RUN python3 -c "from huggingface_hub import hf_hub_download; import os; hf_hub_download(repo_id=os.environ['MODEL_ID'], filename=os.environ['MODEL_FILE'], local_dir=os.environ['MODEL_DIR'])"
 
-USER app
+FROM ollama/ollama:latest AS model-importer
 
+ARG MODEL_ID="unsloth/Qwen3.5-2B-GGUF"
+ARG MODEL_FILE="Qwen3.5-2B-Q4_K_M.gguf"
+ARG MODEL_DIR="/models/unsloth-Qwen3.5-2B-GGUF"
+ARG OLLAMA_MODEL="unsloth-qwen3.5-2b-q4_k_m"
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_FILE="${MODEL_FILE}"
+ENV MODEL_DIR="${MODEL_DIR}"
+ENV OLLAMA_MODEL="${OLLAMA_MODEL}"
+ENV OLLAMA_HOST="127.0.0.1:11434"
+
+COPY --from=model-downloader /models /models
+
+# create ollama model out of .gguf file for serving
+RUN printf 'FROM %s/%s\n' "$MODEL_DIR" "$MODEL_FILE" > /app/Modelfile && \
+    ollama serve >/tmp/ollama-build.log 2>&1 & \
+    ollama_pid="$!" && \
+    trap 'kill "$ollama_pid" 2>/dev/null || true; wait "$ollama_pid" 2>/dev/null || true' EXIT && \
+    for _ in $(seq 1 60); do \
+        if ollama list >/dev/null 2>&1; then \
+            break; \
+        fi; \
+        sleep 1; \
+    done && \
+    ollama create "$OLLAMA_MODEL" -f /app/Modelfile
+
+FROM ollama/ollama:latest
+
+ARG MODEL_ID="unsloth/Qwen3.5-2B-GGUF"
+ARG MODEL_FILE="Qwen3.5-2B-Q4_K_M.gguf"
+ARG OLLAMA_MODEL="unsloth-qwen3.5-2b-q4_k_m"
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_FILE="${MODEL_FILE}"
+ENV OLLAMA_MODEL="${OLLAMA_MODEL}"
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
+ENV OLLAMA_HOST="0.0.0.0:11434"
 
-EXPOSE 8000
+COPY --from=model-importer /root/.ollama /root/.ollama
 
-ENTRYPOINT ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --served-model-name \"$MODEL_ID\" --host 0.0.0.0 --port 8000 \"$@\"", "--"]
+EXPOSE 11434
+
+ENTRYPOINT ["/bin/ollama", "serve"]
 CMD []
