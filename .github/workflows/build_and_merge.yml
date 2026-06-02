@@ -22,14 +22,22 @@ jobs:
         include:
           - variant: cpu
             os: blacksmith-2vcpu-ubuntu-2404
-            model: qwen3.5-2b
-            model_id: Qwen/Qwen3.5-2B
-            model_dir: /models/Qwen3.5-2B
+            model: qwen3.5-2b-gguf
+            model_id: unsloth/Qwen3.5-2B-GGUF
+            model_file: Qwen3.5-2B-Q4_K_M.gguf
+            model_dir: /models/unsloth-Qwen3.5-2B-GGUF
           - variant: cpu
             os: blacksmith-2vcpu-ubuntu-2404
-            model: qwen3.5-0.8b
-            model_id: Qwen/Qwen3.5-0.8B
-            model_dir: /models/Qwen3.5-0.8B
+            model: qwen3.5-9b-gguf
+            model_id: unsloth/Qwen3.5-9B-GGUF
+            model_file: Qwen3.5-9B-Q4_K_M.gguf
+            model_dir: /models/unsloth-Qwen3.5-9B-GGUF
+          - variant: cpu
+            os: blacksmith-2vcpu-ubuntu-2404
+            model: gemma4-e4b-gguf
+            model_id: unsloth/gemma-4-E4B-it-GGUF
+            model_file: gemma-4-E4B-it-Q4_K_M.gguf
+            model_dir: /models/unsloth-gemma-4-E4B-it-GGUF
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,6 +74,7 @@ jobs:
           platforms: linux/${{ endsWith(matrix.os, '-arm') && 'arm64' || 'amd64' }}
           build-args: |
             MODEL_ID=${{ matrix.model_id }}
+            MODEL_FILE=${{ matrix.model_file }}
             MODEL_DIR=${{ matrix.model_dir }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: true
