@@ -31,7 +31,7 @@ ENV OLLAMA_HOST="127.0.0.1:11434"
 COPY --from=model-downloader /models /models
 
 # create ollama model out of .gguf file for serving
-RUN printf 'FROM %s/%s\n' "$MODEL_DIR" "$MODEL_FILE" > /app/Modelfile && \
+RUN printf 'FROM %s/%s\n' "$MODEL_DIR" "$MODEL_FILE" > /tmp/Modelfile && \
     ollama serve >/tmp/ollama-build.log 2>&1 & \
     ollama_pid="$!" && \
     trap 'kill "$ollama_pid" 2>/dev/null || true; wait "$ollama_pid" 2>/dev/null || true' EXIT && \
@@ -41,7 +41,7 @@ RUN printf 'FROM %s/%s\n' "$MODEL_DIR" "$MODEL_FILE" > /app/Modelfile && \
         fi; \
         sleep 1; \
     done && \
-    ollama create "$OLLAMA_MODEL" -f /app/Modelfile
+    ollama create "$OLLAMA_MODEL" -f /tmp/Modelfile
 
 FROM ollama/ollama:latest
 
