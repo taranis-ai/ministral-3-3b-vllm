@@ -1,27 +1,33 @@
-FROM vllm/vllm-openai-cpu:latest-x86_64
+FROM python:3.12-slim AS model-downloader
 
-ARG MODEL_ID="Qwen/Qwen3.5-2B"
-ARG MODEL_DIR="/models/Qwen3.5-2B"
+ARG MODEL_ID="unsloth/Qwen3.5-2B-GGUF"
+ARG MODEL_FILE="Qwen3.5-2B-Q4_K_M.gguf"
+ARG MODEL_DIR="/models/unsloth-Qwen3.5-2B-GGUF"
 
-WORKDIR /app
-
-RUN groupadd --system app && \
-    useradd --system --create-home --home-dir /app --gid app app && \
-    mkdir -p /models && \
-    chown -R app:app /app /models
+RUN mkdir -p /models
 
 ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_FILE="${MODEL_FILE}"
 ENV MODEL_DIR="${MODEL_DIR}"
 
-RUN python3 -c "from huggingface_hub import snapshot_download; import os; snapshot_download(repo_id=os.environ['MODEL_ID'], local_dir=os.environ['MODEL_DIR'], local_dir_use_symlinks=False)"
-RUN chown -R app:app /models
+RUN pip install --no-cache-dir huggingface_hub
+RUN python3 -c "from huggingface_hub import hf_hub_download; import os; hf_hub_download(repo_id=os.environ['MODEL_ID'], filename=os.environ['MODEL_FILE'], local_dir=os.environ['MODEL_DIR'])"
 
-USER app
+FROM ghcr.io/ggml-org/llama.cpp:server
 
+ARG MODEL_ID="unsloth/Qwen3.5-2B-GGUF"
+ARG MODEL_FILE="Qwen3.5-2B-Q4_K_M.gguf"
+ARG MODEL_DIR="/models/unsloth-Qwen3.5-2B-GGUF"
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_FILE="${MODEL_FILE}"
+ENV MODEL_DIR="${MODEL_DIR}"
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
 
+COPY --from=model-downloader /models /models
+
 EXPOSE 8000
 
-ENTRYPOINT ["sh", "-c", "exec vllm serve \"$MODEL_DIR\" --served-model-name \"$MODEL_ID\" --host 0.0.0.0 --port 8000 \"$@\"", "--"]
+ENTRYPOINT ["sh", "-c", "exec /app/llama-server -m \"$MODEL_DIR/$MODEL_FILE\" --alias \"$MODEL_ID\" --host 0.0.0.0 --port 8000 \"$@\"", "--"]
 CMD []
