@@ -24,19 +24,19 @@ jobs:
             os: blacksmith-2vcpu-ubuntu-2404
             model: qwen3.5-2b-gguf
             model_id: unsloth/Qwen3.5-2B-GGUF
-            model_file: Qwen3.5-2B-Q4_K_M.gguf
+            model_file: Qwen3.5-2B-UD-Q4_K_XL.gguf
             model_dir: /models/unsloth-Qwen3.5-2B-GGUF
           - variant: cpu
             os: blacksmith-2vcpu-ubuntu-2404
             model: qwen3.5-9b-gguf
             model_id: unsloth/Qwen3.5-9B-GGUF
-            model_file: Qwen3.5-9B-Q4_K_M.gguf
+            model_file: Qwen3.5-9B-UD-Q4_K_XL.gguf
             model_dir: /models/unsloth-Qwen3.5-9B-GGUF
           - variant: cpu
             os: blacksmith-2vcpu-ubuntu-2404
             model: gemma4-e4b-gguf
             model_id: unsloth/gemma-4-E4B-it-GGUF
-            model_file: gemma-4-E4B-it-Q4_K_M.gguf
+            model_file: gemma-4-E4B-it-UD-Q4_K_XL.gguf
             model_dir: /models/unsloth-gemma-4-E4B-it-GGUF
     steps:
       - name: Checkout
